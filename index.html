@@ -928,7 +928,7 @@
           Забронировать визит
         </h3>
         <p class="text-xs text-espresso-muted mt-1">
-          Выберите дату, время и услугу. Мы сразу сформируем заявку для Telegram.
+          Выберите удобные дату и время. Ульяна подтвердит возможность записи в Telegram.
         </p>
       </div>
 
@@ -939,26 +939,7 @@
           1. Выберите дату:
         </label>
         <div class="grid grid-cols-3 sm:grid-cols-5 gap-2" id="modal-days-container">
-          <button onclick="selectDate(this, 'Пн, 19 октября')" class="date-btn p-2.5 rounded-xl border border-blush-border bg-white text-center hover:border-dusty-rose transition-all focus:outline-none">
-            <span class="block text-[10px] font-mono text-espresso-muted">ПН</span>
-            <span class="font-serif text-base font-semibold text-espresso">19 окт</span>
-          </button>
-          <button onclick="selectDate(this, 'Вт, 20 октября')" class="date-btn p-2.5 rounded-xl border-2 border-dusty-rose-dark bg-dusty-rose-dark text-white text-center transition-all focus:outline-none shadow-rose">
-            <span class="block text-[10px] font-mono text-dusty-rose-light">ВТ</span>
-            <span class="font-serif text-base font-semibold text-white">20 окт</span>
-          </button>
-          <button onclick="selectDate(this, 'Ср, 21 октября')" class="date-btn p-2.5 rounded-xl border border-blush-border bg-white text-center hover:border-dusty-rose transition-all focus:outline-none">
-            <span class="block text-[10px] font-mono text-espresso-muted">СР</span>
-            <span class="font-serif text-base font-semibold text-espresso">21 окт</span>
-          </button>
-          <button onclick="selectDate(this, 'Чт, 22 октября')" class="date-btn p-2.5 rounded-xl border border-blush-border bg-white text-center hover:border-dusty-rose transition-all focus:outline-none">
-            <span class="block text-[10px] font-mono text-espresso-muted">ЧТ</span>
-            <span class="font-serif text-base font-semibold text-espresso">22 окт</span>
-          </button>
-          <button onclick="selectDate(this, 'Пт, 23 октября')" class="date-btn p-2.5 rounded-xl border border-blush-border bg-white text-center hover:border-dusty-rose transition-all focus:outline-none col-span-2 sm:col-span-1">
-            <span class="block text-[10px] font-mono text-espresso-muted">ПТ</span>
-            <span class="font-serif text-base font-semibold text-espresso">23 окт</span>
-          </button>
+          <!-- Даты создаются автоматически при открытии окна записи -->
         </div>
       </div>
 
@@ -966,7 +947,7 @@
       <div class="mb-6">
         <label class="block font-mono text-xs uppercase tracking-wider text-dusty-rose-dark mb-2.5 font-semibold flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full bg-dusty-rose"></span>
-          2. Выберите свободное окошко:
+          2. Выберите желаемое время:
         </label>
         <div class="grid grid-cols-4 gap-2" id="modal-slots-container">
           <button onclick="selectSlot(this, '09:30')" class="slot-btn p-2.5 rounded-xl border border-blush-border bg-white font-mono text-xs text-espresso hover:border-dusty-rose transition-all">
@@ -1050,7 +1031,7 @@
   <!-- INTERACTIVE SCRIPTS -->
   <script>
     // State for booking
-    let currentSelectedDate = 'Вт, 20 октября';
+    let currentSelectedDate = '';
     let currentSelectedSlot = '12:00';
     let currentSelectedService = 'Маникюр «Всё включено» (1 900 ₽)';
 
@@ -1060,6 +1041,7 @@
         currentSelectedService = serviceName + ' (' + price + ')';
       }
       document.getElementById('modal-selected-service-name').innerText = currentSelectedService;
+      renderBookingDays();
       
       const modal = document.getElementById('booking-modal');
       const content = document.getElementById('booking-modal-content');
@@ -1103,14 +1085,59 @@
       document.querySelectorAll('.tab-content-' + category).forEach(card => card.classList.remove('hidden'));
     }
 
-    // Select date in modal
+    // Show the next five weekdays in Krasnodar time (same as Moscow).
+    // A chosen date is a request, not a confirmed available appointment.
+    function renderBookingDays() {
+      const container = document.getElementById('modal-days-container');
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Moscow',
+        year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date());
+      const getPart = type => Number(parts.find(part => part.type === type).value);
+      const cursor = new Date(Date.UTC(getPart('year'), getPart('month') - 1, getPart('day') + 1, 12));
+      const weekdays = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+      const monthsShort = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      const monthsLong = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      container.replaceChildren();
+      let added = 0;
+      while (added < 5) {
+        const weekday = cursor.getUTCDay();
+        if (weekday !== 0 && weekday !== 6) {
+          const dateText = weekdays[weekday] + ', ' + cursor.getUTCDate() + ' ' + monthsLong[cursor.getUTCMonth()] + ' ' + cursor.getUTCFullYear() + ' г.';
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'date-btn p-2.5 rounded-xl border border-blush-border bg-white text-center hover:border-dusty-rose transition-all focus:outline-none' + (added === 4 ? ' col-span-2 sm:col-span-1' : '');
+          button.setAttribute('aria-label', dateText);
+          button.setAttribute('aria-pressed', 'false');
+          const weekdayText = document.createElement('span');
+          weekdayText.className = 'date-weekday block text-[10px] font-mono text-espresso-muted';
+          weekdayText.textContent = weekdays[weekday];
+          const dayText = document.createElement('span');
+          dayText.className = 'date-day font-serif text-base font-semibold text-espresso';
+          dayText.textContent = cursor.getUTCDate() + ' ' + monthsShort[cursor.getUTCMonth()];
+          button.append(weekdayText, dayText);
+          button.addEventListener('click', () => selectDate(button, dateText));
+          container.appendChild(button);
+          if (added === 0) selectDate(button, dateText);
+          added++;
+        }
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+    }
+
     function selectDate(btn, dateText) {
       document.querySelectorAll('.date-btn').forEach(b => {
-        b.className = 'date-btn p-2.5 rounded-xl border border-blush-border bg-white text-center hover:border-dusty-rose transition-all focus:outline-none';
-        b.querySelector('.font-serif').className = 'font-serif text-base font-semibold text-espresso';
+        b.classList.remove('border-2', 'border-dusty-rose-dark', 'bg-dusty-rose-dark', 'text-white', 'shadow-rose');
+        b.classList.add('border', 'border-blush-border', 'bg-white', 'text-espresso');
+        b.querySelector('.date-day').classList.replace('text-white', 'text-espresso');
+        b.querySelector('.date-weekday').classList.replace('text-dusty-rose-light', 'text-espresso-muted');
+        b.setAttribute('aria-pressed', 'false');
       });
-      btn.className = 'date-btn p-2.5 rounded-xl border-2 border-dusty-rose-dark bg-dusty-rose-dark text-white text-center transition-all focus:outline-none shadow-rose';
-      btn.querySelector('.font-serif').className = 'font-serif text-base font-semibold text-white';
+      btn.classList.remove('border', 'border-blush-border', 'bg-white', 'text-espresso');
+      btn.classList.add('border-2', 'border-dusty-rose-dark', 'bg-dusty-rose-dark', 'text-white', 'shadow-rose');
+      btn.querySelector('.date-day').classList.replace('text-espresso', 'text-white');
+      btn.querySelector('.date-weekday').classList.replace('text-espresso-muted', 'text-dusty-rose-light');
+      btn.setAttribute('aria-pressed', 'true');
       currentSelectedDate = dateText;
     }
 
